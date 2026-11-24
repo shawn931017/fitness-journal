@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}設定｜健身月記{% endblock %}
+{% block content %}
+<header class="page-head">
+  <h1>設定</h1>
+</header>
+
+<section class="card anchor" id="goal">
+  <h2>目標</h2>
+  <div class="goal-summary">
+    <p><strong>現在：{{ tg.mode_label }}</strong>{% if tg.auto %}<small>（自動判斷{% if tg.bw %}：{{ tg.bw|kg }} → {{ target|kg }} kg{% else %}，還沒有體重紀錄{% endif %}）</small>{% endif %}</p>
+    <ul>
+      <li>每日熱量：
+        {% if tg.kcal %}<strong>{% if tg.mode == 'gain' %}至少 {{ tg.kcal }}{% elif tg.mode == 'lose' %}不超過 {{ tg.kcal }}{% else %}{{ tg.kcal_low }}–{{ tg.kcal_high }}{% endif %} kcal</strong>
+          <small class="muted">{% if tg.manual %}（手動設定{% if tg.suggested %}；建議值 {{ tg.suggested }}{% endif %}）{% else %}（維持約 {{ tg.maintenance }} {{ '%+d'|format(tg.adjust) if tg.adjust else '' }}）{% endif %}</small>
+        {% else %}<span class="muted">填下面的性別、身高、年齡就能算出來{% if not tg.bw %}（也需要至少一筆體重）{% endif %}</span>{% endif %}</li>
+      <li>每日蛋白質：{% if tg.protein %}<strong>至少 {{ tg.protein }} g</strong> <small class="muted">（{{ tg.bw|kg }} kg × {{ protein_per_kg|kg }}）</small>{% else %}<span class="muted">有體重紀錄後才會算</span>{% endif %}</li>
+    </ul>
+  </div>
+
+  <form method="post">
+    <div class="inline-form">
+      <span class="if-label">目標體重</span>
+      <input name="target_weight" type="text" inputmode="decimal" value="{{ target|kg }}" aria-label="目標體重（公斤）">
+      <span>kg</span>
+    </div>
+    <label class="field"><span>方向</span>
+      <select name="goal_mode">{% for k, label in modes.items() %}<option value="{{ k }}" {{ 'selected' if k == profile.mode }}>{{ label }}</option>{% endfor %}</select></label>
+    <p class="muted small">自動：比目標體重輕超過 1 kg 為增重、重超過 1 kg 為減重，其餘為維持。增重時熱量是「至少吃到」，減重時是「不要超過」，維持是目標 ±10%。</p>
+
+    <h3 class="section-title">算每日熱量用</h3>
+    <div class="row2">
+      <label class="field"><span>性別</span>
+        <select name="sex"><option value="">未填</option>{% for k, label in sexes.items() %}<option value="{{ k }}" {{ 'selected' if k == profile.sex }}>{{ label }}</option>{% endfor %}</select></label>
+      <label class="field"><span>年齡</span>
+        <input name="age" type="text" inputmode="numeric" value="{{ profile.age or '' }}" placeholder="例：22"></label>
+    </div>
+    <div class="row2">
+      <label class="field"><span>身高（cm）</span>
+        <input name="height_cm" type="text" inputmode="decimal" value="{{ profile.height|kg if profile.height else '' }}" placeholder="例：175"></label>
+      <label class="field"><span>活動量</span>
+        <select name="activity">{% for k, label in activities.items() %}<option value="{{ k }}" {{ 'selected' if k == profile.activity }}>{{ label }}</option>{% endfor %}</select></label>
+    </div>
+    <p class="muted small">用 Mifflin-St Jeor 公式算基礎代謝，乘上活動量得到維持熱量；增重 +300、減重 −500。體重用最近一次量的，量了新體重目標會跟著變。</p>
+    <label class="field"><span>每日熱量（手動，選填）</span>
+      <input name="kcal_manual" type="text" inputmode="numeric" value="{{ profile.kcal_manual|int if profile.kcal_manual else '' }}" placeholder="{{ ('留白＝用建議值 ' ~ tg.suggested) if tg.suggested else '例：3000' }}"></label>
+
+    <div class="inline-form">
+      <span class="if-label">蛋白質</span>
+      <input name="protein_per_kg" type="text" inputmode="decimal" value="{{ protein_per_kg|kg }}" aria-label="每公斤體重幾克蛋白質">
+      <span>g / 每公斤體重</span>
+    </div>
+    <p class="muted small">蛋白質不分增重減重，都是「至少吃到」最近一次體重 × 這個數字。</p>
+    <button class="btn btn-primary" type="submit">儲存</button>
+  </form>
+</section>
+
+<section class="card">
+  <div class="card-head"><h2>食物表</h2><a class="small" href="{{ url_for('foods') }}">管理 ›</a></div>
+  <p class="muted small">目前有 {{ food_count }} 種食物，用來把飲食短記換算成熱量、碳水、蛋白質、脂肪。查不到的食物可以自己新增，常吃店家的份量也可以改成自己的數字。</p>
+</section>
+
+<section class="card anchor" id="add-exercise">
+  <h2>新增動作或器材</h2>
+  <p class="muted small">同一個動作換不同器材（例如上斜臥推：啞鈴／上斜胸推機），會各自保留紀錄。</p>
+  <form method="post" action="{{ url_for('add_exercise') }}">
+    <div class="row2">
+      <label class="field"><span>部位</span>
+        <select name="body_part">{% for bp in body_parts %}<option {{ 'selected' if bp == prefill_body_part }}>{{ bp }}</option>{% endfor %}</select></label>
+      <label class="field"><span>每次加減（kg）</span>
+        <input name="step" type="text" inputmode="decimal" value="2.5"></label>
+    </div>
+    <label class="field"><span>動作</span>
+      <input name="movement" list="movement-list" value="{{ prefill_movement }}" placeholder="例：上斜臥推" maxlength="30" required></label>
+    <label class="field"><span>器材</span>
+      <input name="equipment" id="equipment-input" list="equipment-list" placeholder="例：上斜胸推機、啞鈴" maxlength="30" required></label>
+    <label class="toggle block"><input type="checkbox" name="per_hand" value="1" id="per-hand"><span>重量是單手重量（啞鈴）</span></label>
+    <datalist id="movement-list">{% for m in movements %}<option value="{{ m }}">{% endfor %}</datalist>
+    <datalist id="equipment-list">{% for e in equipments %}<option value="{{ e }}">{% endfor %}</datalist>
+    <button class="btn btn-primary btn-block" type="submit">新增並開始記錄</button>
+  </form>
+</section>
+
+<section class="card anchor" id="exercises">
+  <h2>動作清單</h2>
+  <p class="muted small">停用後不會出現在選單，但歷史紀錄會保留。</p>
+  {% for bp, items in grouped.items() if items %}
+    <h3 class="section-title">{{ bp }}</h3>
+    <div class="ex-admin">
+      {% for e in items %}
+      <details class="ex-row {{ 'inactive' if not e.active }}">
+        <summary><span>{{ e.movement }}<small>{{ e.equipment }}{{ '・單手' if e.per_hand }}</small></span>
+          <span class="muted small">{{ '已停用' if not e.active else '±' ~ (e.step|kg) ~ ' kg' }}</span></summary>
+        <form method="post" action="{{ url_for('update_exercise', ex_id=e.id) }}" class="ex-edit">
+          <label class="field"><span>每次加減（kg）</span><input name="step" type="text" inputmode="decimal" value="{{ e.step|kg }}"></label>
+          <label class="toggle block"><input type="checkbox" name="per_hand" value="1" {{ 'checked' if e.per_hand }}><span>單手重量</span></label>
+          <label class="toggle block"><input type="checkbox" name="active" value="1" {{ 'checked' if e.active }}><span>顯示在選單中</span></label>
+          <button class="btn btn-small btn-primary" type="submit">儲存</button>
+        </form>
+      </details>
+      {% endfor %}
+    </div>
+  {% endfor %}
+</section>
+
+<section class="card">
+  <h2>匯出備份（CSV）</h2>
+  <p class="muted small">建議每週下載一次備份，可用 Excel 或 Numbers 開啟。</p>
+  <div class="actions-row">
+    <a class="btn" href="{{ url_for('export_csv', kind='sets') }}">逐組訓練紀錄</a>
+    <a class="btn" href="{{ url_for('export_csv', kind='daily') }}">體重與生活簡記</a>
+  </div>
+</section>
+
+<section class="card anchor" id="demo">
+  <h2>測試資料</h2>
+  <p class="muted small">產生約 45 天、標示為「測試」的訓練與生活紀錄，用來檢查月度曲線。正式使用前請清除；真實紀錄不受影響。</p>
+  <div class="actions-row">
+    {% if not has_demo %}
+    <form method="post" action="{{ url_for('demo_data', action='seed') }}"><button class="btn" type="submit">載入測試資料</button></form>
+    {% else %}
+    <form method="post" action="{{ url_for('demo_data', action='clear') }}"
+          onsubmit="return confirm('確定要清除所有測試資料嗎？真實紀錄不會受影響。');">
+      <button class="btn btn-danger" type="submit">清除測試資料</button></form>
+    {% endif %}
+  </div>
+</section>
+
+<section class="card tip">
+  <h2>加入主畫面</h2>
+  <ol class="steps">
+    <li>用 iPhone 的 Safari 開啟 <code>{{ site_url }}</code>。</li>
+    <li>點下方「分享」按鈕，選「加入主畫面」。</li>
+    <li>之後從主畫面的「健身月記」圖示開啟；第一次開啟需要再登入一次。</li>
+  </ol>
+</section>
+
+<section class="card">
+  <h2>帳號</h2>
+  <p>目前登入：<strong>{{ username }}</strong></p>
+  <p class="muted small">更改密碼請在主機終端機執行 <code>python -m flask --app app set-password</code>。</p>
+  <form method="post" action="{{ url_for('logout') }}"><button class="btn" type="submit">登出</button></form>
+</section>
+{% endblock %}

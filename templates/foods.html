@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}食物表｜健身月記{% endblock %}
+{% block content %}
+<a class="back" href="{{ next or url_for('settings') }}">‹ 返回</a>
+<header class="page-head tight">
+  <h1>食物表</h1>
+  <p class="muted">飲食短記會用這張表估算熱量與營養素，數值都是「每一單位」的量。</p>
+</header>
+
+<section class="card anchor" id="add-food">
+  <h2>新增食物</h2>
+  <p class="muted small">可以參考包裝上的營養標示，或衛福部「食品營養成分資料庫」。新增後，之前寫過這個食物的紀錄也會一起重新估算。</p>
+  <form method="post" action="{{ url_for('foods') }}">
+    <input type="hidden" name="next" value="{{ next }}">
+    <div class="row2">
+      <label class="field"><span>名稱</span>
+        <input name="name" value="{{ prefill_name }}" maxlength="30" required placeholder="例：麻辣燙"></label>
+      <label class="field"><span>單位</span>
+        <input name="unit" maxlength="4" required placeholder="碗、顆、個、杯…" list="unit-list"></label>
+    </div>
+    <datalist id="unit-list">{% for u in ['顆', '個', '碗', '盤', '份', '杯', '片', '條', '包', '瓶', '罐', '塊'] %}<option value="{{ u }}">{% endfor %}</datalist>
+    <div class="row4">
+      <label class="field"><span>熱量 kcal</span><input name="kcal" inputmode="decimal" required></label>
+      <label class="field"><span>碳水 g</span><input name="carb" inputmode="decimal" required></label>
+      <label class="field"><span>蛋白質 g</span><input name="protein" inputmode="decimal" required></label>
+      <label class="field"><span>脂肪 g</span><input name="fat" inputmode="decimal" required></label>
+    </div>
+    <div class="row2">
+      <label class="field"><span>每單位約幾克（選填）</span><input name="grams" inputmode="decimal" placeholder="用於「200g」換算"></label>
+      <label class="field"><span>分類</span>
+        <select name="category">{% for c in categories %}<option {{ 'selected' if c == '自訂' }}>{{ c }}</option>{% endfor %}</select></label>
+    </div>
+    <label class="field"><span>別名（選填，用逗號分開）</span><input name="aliases" placeholder="例：麻辣燙,關東煮"></label>
+    <button class="btn btn-primary btn-block" type="submit">新增</button>
+  </form>
+</section>
+
+<section class="card anchor" id="food-list">
+  <h2>全部食物</h2>
+  <p class="muted small">點開可以修改數值或別名。內建數值是常見份量的估算，和你常吃的店家差很多時，直接改成自己的數字即可。</p>
+  {% for cat, items in grouped.items() if items %}
+    <h3 class="section-title">{{ cat }}</h3>
+    <div class="ex-admin">
+      {% for f in items %}
+      <details class="ex-row anchor" id="food-{{ f.id }}">
+        <summary>
+          <span>{{ f.name }}<small>每{{ f.unit }}</small></span>
+          <span class="muted small">{{ f.kcal|kg }} kcal・P {{ f.protein|kg }}</span>
+        </summary>
+        <form method="post" action="{{ url_for('update_food', food_id=f.id) }}" class="ex-edit">
+          <div class="row2">
+            <label class="field"><span>名稱</span><input name="name" value="{{ f.name }}" maxlength="30" required></label>
+            <label class="field"><span>單位</span><input name="unit" value="{{ f.unit }}" maxlength="4" required list="unit-list"></label>
+          </div>
+          <div class="row4">
+            <label class="field"><span>kcal</span><input name="kcal" inputmode="decimal" value="{{ f.kcal|kg }}" required></label>
+            <label class="field"><span>碳水</span><input name="carb" inputmode="decimal" value="{{ f.carb|kg }}" required></label>
+            <label class="field"><span>蛋白質</span><input name="protein" inputmode="decimal" value="{{ f.protein|kg }}" required></label>
+            <label class="field"><span>脂肪</span><input name="fat" inputmode="decimal" value="{{ f.fat|kg }}" required></label>
+          </div>
+          <div class="row2">
+            <label class="field"><span>每單位約幾克</span><input name="grams" inputmode="decimal" value="{{ f.grams|kg }}"></label>
+            <label class="field"><span>分類</span>
+              <select name="category">{% for c in categories %}<option {{ 'selected' if c == f.category }}>{{ c }}</option>{% endfor %}</select></label>
+          </div>
+          <label class="field"><span>別名</span><input name="aliases" value="{{ f.aliases }}"></label>
+          <div class="actions-row">
+            <button class="btn btn-small btn-primary" type="submit">儲存</button>
+            {% if not f.is_builtin %}
+            <button class="btn btn-small btn-danger" type="submit" formaction="{{ url_for('delete_food', food_id=f.id) }}"
+                    onclick="return confirm('確定刪除這個食物？用到它的飲食紀錄會變成「查不到」。');">刪除</button>
+            {% endif %}
+          </div>
+        </form>
+      </details>
+      {% endfor %}
+    </div>
+  {% endfor %}
+</section>
+{% endblock %}

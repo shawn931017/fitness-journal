@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}睡前簡記｜健身月記{% endblock %}
+{% block content %}
+<header class="page-head">
+  <h1>睡前簡記</h1>
+  <p class="muted">記不清楚可以留白，隔天也能回來補記或修正。</p>
+</header>
+
+<div class="date-nav">
+  <a class="btn" href="{{ url_for('life', date=prev_day) }}" aria-label="前一天">‹</a>
+  <form method="get" action="{{ url_for('life') }}">
+    <input type="date" name="date" value="{{ ds }}" max="{{ today_str }}" onchange="this.form.submit()" aria-label="日期">
+  </form>
+  {% if next_day %}<a class="btn" href="{{ url_for('life', date=next_day) }}" aria-label="後一天">›</a>
+  {% else %}<span class="btn disabled" aria-hidden="true">›</span>{% endif %}
+</div>
+<p class="center muted small">{{ d|mdw }}・{{ d|ago }}{% if record %}・<strong class="ok-text">已記錄</strong>{% else %}・尚未記錄{% endif %}
+  {% if record and record.is_demo %}<span class="tag">測試</span>{% endif %}</p>
+
+{% set v = form if form else {} %}
+<form method="post" class="card">
+  <input type="hidden" name="date" value="{{ ds }}">
+
+  <div class="stepper">
+    <label class="stepper-label" for="body_weight">體重（kg）</label>
+    <div class="stepper-row">
+      <button type="button" class="step" data-target="body_weight" data-delta="-0.1" data-empty="{{ last_weight|kg }}">−</button>
+      <input id="body_weight" name="body_weight" type="text" inputmode="decimal" placeholder="沒量就留白"
+             value="{{ v.body_weight if form else (record.body_weight|kg if record else '') }}">
+      <button type="button" class="step" data-target="body_weight" data-delta="0.1" data-empty="{{ last_weight|kg }}">＋</button>
+    </div>
+  </div>
+
+  <div class="stepper">
+    <label class="stepper-label" for="sleep_hours">昨晚實際睡了幾小時</label>
+    <div class="stepper-row">
+      <button type="button" class="step" data-target="sleep_hours" data-delta="-0.5" data-empty="7">−</button>
+      <input id="sleep_hours" name="sleep_hours" type="text" inputmode="decimal" placeholder="記不清楚就留白"
+             value="{{ v.sleep_hours if form else (record.sleep_hours|kg if record else '') }}">
+      <button type="button" class="step" data-target="sleep_hours" data-delta="0.5" data-empty="7">＋</button>
+    </div>
+    <p class="hint">睡眠記在起床日：{{ d|mdw }} 這格填的是前一晚睡了多久。</p>
+  </div>
+
+  <label class="field"><span>今天吃了什麼</span>
+    <textarea name="food" rows="3" maxlength="500" data-nutrition-preview="{{ url_for('nutrition_preview') }}"
+      placeholder="例：早餐蛋餅、午餐雞腿便當、晚餐鍋貼 20 顆、高蛋白一杯">{{ v.food if form else (record.food or '' if record else '') }}</textarea></label>
+  <p class="hint">用頓號或逗號分開，數量寫在後面（鍋貼 20 顆、白飯半碗）或前面（兩碗白飯）都可以。</p>
+  <div id="nutrition-preview">{% include "_nutrition.html" %}</div>
+
+  <button class="btn btn-primary btn-big btn-block" type="submit">儲存</button>
+</form>
+
+<section class="card">
+  <h2>最近 14 天</h2>
+  <table class="table">
+    <thead><tr><th>日期</th><th>體重</th><th>睡眠</th><th>熱量</th><th>蛋白質</th></tr></thead>
+    <tbody>
+    {% for day, r, e, c in recent %}
+      <tr class="{{ 'current' if day == ds }}">
+        <td><a href="{{ url_for('life', date=day) }}">{{ day|mdw }}</a>{% if r and r.is_demo %} <span class="tag">測試</span>{% endif %}</td>
+        <td>{{ r.body_weight|kg if r and r.body_weight is not none else '—' }}</td>
+        <td>{{ (r.sleep_hours|kg ~ ' h') if r and r.sleep_hours is not none else '—' }}</td>
+        {% if e and e["items"] %}
+          <td>{{ e.total.kcal|round|int }}{% if e.unknown %}<span class="partial" title="有查不到的食物">+</span>{% endif %}
+            {% if short[c.kcal.state] %}<span class="mark mark-{{ c.kcal.state }}" title="{{ c.kcal.text }}">{{ short[c.kcal.state] }}</span>{% endif %}</td>
+          <td>{{ '%.0f'|format(e.total.protein) }} g
+            {% if short[c.protein.state] %}<span class="mark mark-{{ c.protein.state }}" title="{{ c.protein.text }}">{{ short[c.protein.state] }}</span>{% endif %}</td>
+        {% elif r and r.food %}<td colspan="2" class="muted">有寫・未估算</td>
+        {% else %}<td>—</td><td>—</td>{% endif %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted small">「—」代表沒有紀錄，回顧時視為未知，不當成 0。熱量後面的「+」表示有查不到的食物，實際應更高。
+    ✓ 達到當天目標、「不足」「超過」依{{ tg.mode_label }}規則判斷、「?」有查不到的食物無法判斷；今天還沒結束不標示。</p>
+</section>
+
+<section class="card tip">
+  <h2>設定每晚提醒</h2>
+  <ol class="steps">
+    <li>打開 iPhone「提醒事項」，新增一則「睡前簡記」。</li>
+    <li>點 ⓘ，開啟「日期」與「時間」（例如 22:30），「重複」選「每天」。</li>
+    <li>在「URL」欄貼上下面的網址，提醒跳出來時點一下就會回到這頁。</li>
+  </ol>
+  <div class="copy-row">
+    <code id="reminder-url">{{ reminder_url }}</code>
+    <button type="button" class="btn btn-small" data-copy="#reminder-url">複製</button>
+  </div>
+</section>
+{% endblock %}

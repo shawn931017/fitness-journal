@@ -1,0 +1,50 @@
+<div class="day-detail">
+  <div class="card-head">
+    <h3>{{ d|mdw }}</h3>
+    {% if partial %}
+      <span>
+        <a class="small" href="{{ url_for('day_view', day=ds) }}">完整頁面 ›</a>
+        <button type="button" class="btn btn-small" data-close-panel aria-label="關閉">✕</button>
+      </span>
+    {% endif %}
+  </div>
+
+  <div class="day-life">
+    {% if life %}
+      <p>體重 <strong>{{ (life.body_weight|kg ~ ' kg') if life.body_weight is not none else '—' }}</strong>
+        ・昨晚睡 <strong>{{ (life.sleep_hours|kg ~ ' 小時') if life.sleep_hours is not none else '—' }}</strong>
+        {% if life.is_demo %}<span class="tag">測試</span>{% endif %}</p>
+      <p class="muted">飲食：{{ life.food or '—' }}</p>
+      {% if est and est["items"] %}
+      <p class="small">估算 <strong>{{ est.total.kcal|round|int }} kcal</strong>・碳水 {{ '%.0f'|format(est.total.carb) }} g・蛋白質 <strong>{{ '%.0f'|format(est.total.protein) }} g</strong>・脂肪 {{ '%.0f'|format(est.total.fat) }} g
+        {% if est.unknown %}<span class="muted">（{{ est.unknown|join('、') }} 查不到）</span>{% endif %}</p>
+      {% if cmp and not cmp.in_progress %}
+      <p class="small">{{ cmp.mode_label }}目標：
+        {% for key, label in [('kcal', '熱量'), ('protein', '蛋白質')] if cmp[key].state != 'none' %}
+          {{ '・' if not loop.first }}{{ label }} <span class="mark mark-{{ cmp[key].state }}">{{ cmp[key].text }}</span>
+        {% endfor %}</p>
+      {% endif %}
+      {% endif %}
+    {% else %}
+      <p class="muted">這天沒有生活簡記。</p>
+    {% endif %}
+  </div>
+
+  {% for w in workout %}
+  <div class="day-ex {{ 'focus' if w.exercise_id == focus }}">
+    <h4>{{ w.movement }}<small>{{ w.equipment }}</small></h4>
+    <ol class="sets compact">
+      {% for s in w.sets %}
+      <li class="{{ 'warm' if s.is_warmup }}">
+        <span class="set-label">{{ s.label }}</span>
+        <span class="set-val">{{ s.weight|wlabel(w.per_hand) }} × {{ s.reps }} 下</span>
+        {% if s.is_demo %}<span class="tag">測試</span>{% endif %}
+        {% if not partial %}<a class="edit-link" href="{{ url_for('edit_set', set_id=s.id, next=url_for('day_view', day=ds)) }}">修改</a>{% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+  </div>
+  {% else %}
+  <p class="muted">這天沒有訓練紀錄。</p>
+  {% endfor %}
+</div>

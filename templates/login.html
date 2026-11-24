@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}登入｜健身月記{% endblock %}
+{% block nav %}{% endblock %}
+{% block content %}
+<div class="login">
+  <img class="login-icon" src="{{ url_for('static', filename='icons/icon-192.png') }}" alt="" width="72" height="72">
+  <h1>健身月記</h1>
+  <p class="muted">從每一組，看見一個月的進步</p>
+
+  {% if not configured %}
+    <div class="card">
+      <h2>尚未設定帳號</h2>
+      <p>為了保護訓練與生活紀錄，請先在主機的終端機執行：</p>
+      <pre class="code">python -m flask --app app set-password</pre>
+      <p class="muted small">設定完成後重新整理這一頁即可登入。</p>
+    </div>
+  {% else %}
+    <form method="post" class="card">
+      {% if error %}<div class="flash flash-error">{{ error }}</div>{% endif %}
+      <label class="field"><span>帳號</span>
+        <input name="username" autocomplete="username" autocapitalize="off" autocorrect="off" required autofocus></label>
+      <label class="field"><span>密碼</span>
+        <input name="password" type="password" autocomplete="current-password" required></label>
+      <button class="btn btn-primary btn-big btn-block" type="submit">登入</button>
+      <p class="muted small center">登入一次後會保持登入一年。</p>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

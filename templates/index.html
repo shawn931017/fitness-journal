@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block content %}
+<header class="page-head">
+  <p class="eyebrow">{{ today_str|mdw }}</p>
+  <h1>健身月記</h1>
+</header>
+
+<section class="status-grid" aria-label="今日是否已記錄">
+  <a class="status {{ 'done' if workout }}" href="{{ url_for('log_pick') }}">
+    <span class="status-dot" aria-hidden="true">{{ '✓' if workout else '' }}</span>
+    <span class="status-title">今日訓練</span>
+    <span class="status-sub">{% if workout %}已記錄 {{ workout|length }} 個動作・{{ total_sets }} 組{% else %}尚未記錄{% endif %}</span>
+  </a>
+  <a class="status {{ 'done' if life }}" href="{{ url_for('life') }}">
+    <span class="status-dot" aria-hidden="true">{{ '✓' if life else '' }}</span>
+    <span class="status-title">今日簡記</span>
+    <span class="status-sub">{% if life %}已記錄{% else %}尚未記錄・睡前填{% endif %}</span>
+  </a>
+</section>
+
+<section class="card mascot-card">
+  <div class="mascot-art">{{ m.svg|safe }}</div>
+  <div class="mascot-text">
+    <h2>{{ m.name }}</h2>
+    <p>{{ m.message }}</p>
+    {% set pct = [100, (m.points * 10)]|min %}
+    <div class="meter" role="img" aria-label="本週 {{ m.points }} 點"><span style="width: {{ pct }}%"></span></div>
+    <p class="muted small">本週 {{ m.points }} 點：訓練 {{ m.train_days }} 天 ×2、簡記 {{ m.life_days }} 天 ×1</p>
+  </div>
+</section>
+
+<section class="actions">
+  <a class="btn btn-primary btn-big" href="{{ url_for('log_pick') }}">開始記錄訓練</a>
+  <div class="actions-row">
+    <a class="btn btn-big" href="{{ url_for('life') }}">睡前簡記</a>
+    <a class="btn btn-big" href="{{ url_for('review') }}">看月回顧</a>
+  </div>
+</section>
+
+{% if est and est["items"] %}
+<section class="card">
+  <div class="card-head"><h2>今日飲食估算</h2><a class="small" href="{{ url_for('life') }}">明細 ›</a></div>
+  <div class="nutri-total compact">
+    <div class="nt-kcal"><strong>{{ est.total.kcal|round|int }}</strong><span>kcal</span></div>
+    <div><strong>{{ '%.0f'|format(est.total.carb) }}</strong><span>碳水 g</span></div>
+    <div class="nt-protein"><strong>{{ '%.0f'|format(est.total.protein) }}</strong><span>蛋白質 g</span></div>
+    <div><strong>{{ '%.0f'|format(est.total.fat) }}</strong><span>脂肪 g</span></div>
+  </div>
+  {% include "_goal_bars.html" %}
+  {% if est.unknown %}<p class="muted small">另有 {{ est.unknown|length }} 項查不到（{{ est.unknown|join('、') }}），沒有算進去。</p>{% endif %}
+</section>
+{% elif tg.kcal or tg.protein %}
+<section class="card">
+  <div class="card-head"><h2>今天的飲食目標</h2><a class="small" href="{{ url_for('settings') }}#goal">調整 ›</a></div>
+  <p>{{ tg.mode_label }}：
+    {% if tg.kcal %}熱量{% if tg.mode == 'gain' %}至少 <strong>{{ tg.kcal }}</strong>{% elif tg.mode == 'lose' %}不超過 <strong>{{ tg.kcal }}</strong>{% else %} <strong>{{ tg.kcal_low }}–{{ tg.kcal_high }}</strong>{% endif %} kcal{% endif %}{% if tg.kcal and tg.protein %}、{% endif %}
+    {% if tg.protein %}蛋白質至少 <strong>{{ tg.protein }}</strong> g{% endif %}</p>
+  <p class="muted small">在<a href="{{ url_for('life') }}">簡記</a>寫下吃了什麼，就會顯示目前進度。</p>
+</section>
+{% endif %}
+
+{% if workout %}
+<section class="card">
+  <div class="card-head"><h2>今天做了</h2><a class="small" href="{{ url_for('day_view', day=today_str) }}">全部組別 ›</a></div>
+  <div class="list">
+    {% for w in workout %}
+    <a class="list-item" href="{{ url_for('log_exercise', ex_id=w.exercise_id) }}">
+      <span class="li-main">{{ w.movement }}<small>{{ w.equipment }}</small></span>
+      <span class="pill">{{ w.sets|length }} 組</span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="card">
+  <div class="card-head"><h2>體重</h2><a class="small" href="{{ url_for('review') }}">看曲線 ›</a></div>
+  {% if latest_weight %}
+    {% set gap = target - latest_weight.body_weight %}
+    <p class="big-number">{{ latest_weight.body_weight|kg }}<span> kg</span></p>
+    <p class="muted small">{{ latest_weight.date|mdw }} 量測・
+      {% if gap > 0 %}距離目標 {{ target|kg }} kg 還差 {{ '%.1f'|format(gap) }} kg{% else %}已達目標 {{ target|kg }} kg{% endif %}</p>
+  {% else %}
+    <p class="muted">還沒有體重紀錄，可以在<a href="{{ url_for('life') }}">睡前簡記</a>填寫。</p>
+  {% endif %}
+</section>
+
+{% if recent %}
+<section class="card">
+  <div class="card-head"><h2>最近訓練</h2></div>
+  <div class="list">
+    {% for r in recent %}
+    <a class="list-item" href="{{ url_for('day_view', day=r.date) }}">
+      <span class="li-main">{{ r.date|mdw }}<small>{{ r.parts|replace(',', '・') }}</small></span>
+      <span class="li-side">{{ r.n_sets }} 組{% if r.demo %} <span class="tag">測試</span>{% endif %}</span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

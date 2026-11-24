@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}修改紀錄｜健身月記{% endblock %}
+{% block content %}
+<a class="back" href="{{ back }}">‹ 返回</a>
+<header class="page-head tight">
+  <p class="eyebrow">修改紀錄</p>
+  <h1>{{ s.movement }}<small>{{ s.equipment }}</small></h1>
+</header>
+
+<form method="post" class="card">
+  <input type="hidden" name="next" value="{{ back }}">
+  <label class="field"><span>日期</span>
+    <input type="date" name="date" value="{{ s.date }}" max="{{ today_str }}" required></label>
+
+  <div class="stepper">
+    <label class="stepper-label" for="weight">重量（kg{{ '，單手' if s.per_hand }}）</label>
+    <div class="stepper-row">
+      <button type="button" class="step" data-target="weight" data-delta="-{{ s.step|kg }}">−</button>
+      <input id="weight" name="weight" type="text" inputmode="decimal" value="{{ s.weight|kg }}" required>
+      <button type="button" class="step" data-target="weight" data-delta="{{ s.step|kg }}">＋</button>
+    </div>
+  </div>
+  <div class="stepper">
+    <label class="stepper-label" for="reps">次數（下）</label>
+    <div class="stepper-row">
+      <button type="button" class="step" data-target="reps" data-delta="-1" data-min="1">−</button>
+      <input id="reps" name="reps" type="text" inputmode="numeric" pattern="[0-9]*" value="{{ s.reps }}" required>
+      <button type="button" class="step" data-target="reps" data-delta="1">＋</button>
+    </div>
+  </div>
+  <label class="toggle block"><input type="checkbox" name="is_warmup" value="1" {{ 'checked' if s.is_warmup }}><span>熱身組（不列入比較）</span></label>
+  <button class="btn btn-primary btn-big btn-block" type="submit">儲存修改</button>
+</form>
+
+<form method="post" action="{{ url_for('delete_set', set_id=s.id) }}" class="center"
+      onsubmit="return confirm('確定要刪除這一組嗎？刪除後無法復原。');">
+  <input type="hidden" name="next" value="{{ back }}">
+  <button class="btn btn-danger" type="submit">刪除這一組</button>
+</form>
+{% endblock %}

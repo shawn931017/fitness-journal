@@ -1,0 +1,13 @@
+{% if today_sets %}
+<ol class="sets">
+  {% for s in today_sets %}
+  <li class="{{ 'warm' if s.is_warmup }}">
+    <span class="set-label">{{ s.label }}</span>
+    <span class="set-val">{{ s.weight|wlabel(ex.per_hand) }} × {{ s.reps }} 下</span>
+    <a class="edit-link" href="{{ url_for('edit_set', set_id=s.id, next=back) }}">修改</a>
+  </li>
+  {% endfor %}
+</ol>
+{% else %}
+<p class="muted">今天還沒有這個動作的紀錄。</p>
+{% endif %}

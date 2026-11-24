@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}月回顧｜健身月記{% endblock %}
+{% block content %}
+<header class="page-head">
+  <h1>月回顧</h1>
+  <p class="muted">同一台器材、同一個組次，逐次比較做組重量與次數。</p>
+</header>
+
+{% if not trained %}
+  <div class="card">
+    <p>還沒有任何訓練紀錄。先到<a href="{{ url_for('log_pick') }}">訓練</a>記下幾組，這裡就會出現曲線。</p>
+  </div>
+{% else %}
+<form method="get" class="card filters" id="review-form">
+  <label class="field"><span>動作與器材</span>
+    <select name="exercise_id">
+      {% for e in trained %}
+      <option value="{{ e.id }}" {{ 'selected' if ex and e.id == ex.id }}>{{ e.movement }}｜{{ e.equipment }}</option>
+      {% endfor %}
+      {% if ex and ex.id not in trained|map(attribute='id')|list %}
+      <option value="{{ ex.id }}" selected>{{ ex.movement }}｜{{ ex.equipment }}（尚無紀錄）</option>
+      {% endif %}
+    </select></label>
+  <div class="row2">
+    <label class="field"><span>期間</span>
+      <select name="days">{% for k, label in ranges.items() %}<option value="{{ k }}" {{ 'selected' if k == rng }}>{{ label }}</option>{% endfor %}</select></label>
+    <label class="field"><span>比較組次</span>
+      <select name="pick">{% for k, label in picks.items() %}<option value="{{ k }}" {{ 'selected' if k == pick }}>{{ label }}</option>{% endfor %}</select></label>
+  </div>
+  <noscript><button class="btn btn-block" type="submit">更新</button></noscript>
+</form>
+{% endif %}
+
+{% if ex %}
+<section class="card chart-card">
+  <div class="card-head">
+    <h2>{{ ex.movement }}<small>{{ ex.equipment }}{{ '・單手重量' if ex.per_hand }}</small></h2>
+    <span class="muted small">{{ picks[pick] }}</span>
+  </div>
+  {% if fig_train %}
+    <div class="chart" id="chart-train"></div>
+    <p class="hint"><span class="star">★</span> 比前一次加重，或同重量多做幾下。熱身組不列入。點資料點可看當天全部組別。</p>
+  {% else %}
+    <p class="muted">這段期間沒有符合「{{ picks[pick] }}」的紀錄。</p>
+  {% endif %}
+  <div id="day-panel" class="day-panel" data-ex="{{ ex.id }}"
+       data-url="{{ url_for('day_view', day='DAY', partial=1, exercise_id=ex.id) }}" hidden></div>
+</section>
+
+{% if progress %}
+<section class="card">
+  <h2>這段期間的進步</h2>
+  <ul class="progress-list">
+    {% for p in progress|reverse %}
+    <li><a href="#" data-day="{{ p.date }}">{{ p.date|mdw }}</a>
+      <span>{{ p.weight|wlabel(ex.per_hand) }} × {{ p.reps }} 下</span>
+      <span class="badge">{{ p.progress_text }}</span>{% if p.is_demo %}<span class="tag">測試</span>{% endif %}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endif %}
+
+<section class="card chart-card">
+  {% if fig_weight %}
+    <div class="chart" id="chart-weight"></div>
+  {% else %}
+    <h2>體重</h2>
+    <p class="muted">這段期間沒有量體重的紀錄。</p>
+  {% endif %}
+  <p class="hint">體重曲線只呈現體重變化，沒量的日期留白；肌肉量與體脂需要另外的量測資料。</p>
+</section>
+
+<section class="card chart-card">
+  {% if fig_food %}
+    <div class="chart" id="chart-food"></div>
+    <p class="hint">由飲食短記估算；淡色長條表示當天有查不到的食物，實際應更高。沒寫飲食的日子留白。
+      橘色虛線是當天的目標（依當時體重計算，<a href="{{ url_for('settings') }}#goal">可在設定調整</a>）：
+      {% if tg.mode == 'gain' %}增重時熱量要超過線{% elif tg.mode == 'lose' %}減重時熱量不要超過線{% else %}維持時熱量落在兩條線之間{% endif %}，蛋白質都要超過線。</p>
+  {% else %}
+    <h2>飲食估算</h2>
+    <p class="muted">這段期間沒有可估算的飲食紀錄。</p>
+  {% endif %}
+  {% set gk, gp = goal_stats.kcal, goal_stats.protein %}
+  {% if gk.days or gp.days %}
+  <div class="goal-stats">
+    <h3 class="section-title">吃夠了嗎（{{ tg.mode_label }}）</h3>
+    {% if gk.days %}
+    <p><span class="gs-label">熱量</span> 達標 <strong>{{ gk.ok }}</strong> / {{ gk.days }} 天
+      <small class="muted">{% if gk.under %}・不足 {{ gk.under }} 天{% endif %}{% if gk.over %}・超過 {{ gk.over }} 天{% endif %}{% if gk.unknown %}・無法判斷 {{ gk.unknown }} 天{% endif %}</small></p>
+    {% endif %}
+    {% if gp.days %}
+    <p><span class="gs-label">蛋白質</span> 達標 <strong>{{ gp.ok }}</strong> / {{ gp.days }} 天
+      <small class="muted">{% if gp.under %}・不足 {{ gp.under }} 天{% endif %}{% if gp.unknown %}・無法判斷 {{ gp.unknown }} 天{% endif %}</small></p>
+    {% endif %}
+    <p class="muted small">只算有寫飲食、已經過完的日子（不含今天）；有查不到的食物、又無法從已知部分確定的日子列為無法判斷。</p>
+  </div>
+  {% elif not tg.kcal %}
+  <p class="muted small">到<a href="{{ url_for('settings') }}#goal">設定</a>填身高、年齡，就能看每天熱量有沒有達標。</p>
+  {% endif %}
+  {% if nutri.days %}
+  <div class="stats nutri-avg">
+    <div><strong>{{ nutri.kcal|round|int }}</strong><span>kcal</span></div>
+    <div><strong>{{ '%.0f'|format(nutri.carb) }}</strong><span>碳水 g</span></div>
+    <div><strong>{{ '%.0f'|format(nutri.protein) }}</strong><span>蛋白質 g</span></div>
+    <div><strong>{{ '%.0f'|format(nutri.fat) }}</strong><span>脂肪 g</span></div>
+  </div>
+  <p class="muted small">以上為每日平均，只算 {{ nutri.days }} 天「每項都查得到」的日子{% if nutri.partial %}，另有 {{ nutri.partial }} 天含查不到的食物未列入{% endif %}。</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>紀錄天數</h2>
+  <div class="stats">
+    <div><strong>{{ stats.sessions }}</strong><span>次訓練</span></div>
+    <div><strong>{{ stats.weight }}</strong><span>天有體重</span></div>
+    <div><strong>{{ stats.sleep }}</strong><span>天有睡眠</span></div>
+    <div><strong>{{ stats.food }}</strong><span>天有飲食</span></div>
+  </div>
+  <p class="muted small">期間共 {{ stats.days }} 天{{ '；訓練次數只算目前選的動作' if ex }}；沒有紀錄的日子視為未知。</p>
+</section>
+
+{% if sessions %}
+<section class="card">
+  <h2>逐次紀錄</h2>
+  <p class="muted small">表現停滯時，可以對照那幾天的睡眠與飲食。</p>
+  <div class="session-list">
+    {% for sess in sessions %}
+    <a class="session" href="#" data-day="{{ sess.date }}">
+      <div class="session-head">
+        <strong>{{ sess.date|mdw }}</strong>
+        {% if sess.progress %}<span class="badge">{{ sess.progress }}</span>{% endif %}
+        {% if sess.is_demo %}<span class="tag">測試</span>{% endif %}
+      </div>
+      <div class="session-sets">
+        {% for s in sess.sets %}<span class="{{ 'warm' if s.is_warmup }} {{ 'chosen' if sess.chosen and s.id == sess.chosen.id }}">{{ s.weight|kg }}×{{ s.reps }}</span>{% endfor %}
+      </div>
+      <div class="session-life muted small">
+        {% if sess.life %}
+          睡眠 {{ (sess.life.sleep_hours|kg ~ ' h') if sess.life.sleep_hours is not none else '—' }}
+          {% if sess.est and sess.est["items"] %}・約 {{ sess.est.total.kcal|round|int }}{{ '+' if sess.est.unknown }} kcal・蛋白質 {{ '%.0f'|format(sess.est.total.protein) }} g{% endif %}
+          ・飲食 {{ sess.life.food|truncate(24, True, '…') if sess.life.food else '—' }}
+        {% else %}這天沒有生活簡記{% endif %}
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  <p class="muted small">粗體框為比較用的組次；淡色為熱身組。</p>
+</section>
+{% endif %}
+
+{% if fig_train %}<script type="application/json" id="fig-train">{{ fig_train|tojson }}</script>{% endif %}
+{% if fig_weight %}<script type="application/json" id="fig-weight">{{ fig_weight|tojson }}</script>{% endif %}
+{% if fig_food %}<script type="application/json" id="fig-food">{{ fig_food|tojson }}</script>{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if fig_train or fig_weight or fig_food %}
+<script src="{{ url_for('plotly_js', v=plotly_version) }}"></script>
+{% endif %}
+<script>FJ.initReview();</script>
+{% endblock %}

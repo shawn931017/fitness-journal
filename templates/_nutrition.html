@@ -1,0 +1,42 @@
+{# 飲食估算結果：est = nutrition.parse() 的結果 #}
+{% if est and (est["items"] or est.unknown) %}
+<div class="nutri">
+  <div class="nutri-head">
+    <span class="nutri-title">營養估算{% if preview %}<small>（試算，按儲存才會記下）</small>{% endif %}</span>
+    <a class="small" href="{{ url_for('foods', next=back) }}">食物表 ›</a>
+  </div>
+  {% set t = est.total %}
+  <div class="nutri-total">
+    <div class="nt-kcal"><strong>{{ t.kcal|round|int }}</strong><span>kcal</span></div>
+    <div><strong>{{ '%.0f'|format(t.carb) }}</strong><span>碳水 g</span></div>
+    <div class="nt-protein"><strong>{{ '%.0f'|format(t.protein) }}</strong><span>蛋白質 g</span></div>
+    <div><strong>{{ '%.0f'|format(t.fat) }}</strong><span>脂肪 g</span></div>
+  </div>
+  {% include "_goal_bars.html" %}
+
+  {% if est["items"] %}
+  <ul class="nutri-items">
+    {% for it in est["items"] %}
+    <li>
+      <span class="ni-name">{{ it.name }} <small>× {{ '%g'|format(it.servings|round(2)) }} {{ it.unit }}</small></span>
+      <span class="ni-val">{{ it.kcal|round|int }} kcal・P {{ '%.0f'|format(it.protein) }}</span>
+      {% if it.note %}<span class="ni-note">{{ it.note }}</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if est.unknown %}
+  <div class="nutri-unknown">
+    <strong>查不到：</strong>
+    {% for u in est.unknown %}
+      <a class="chip-link" href="{{ url_for('foods', name=u, next=back) }}#add-food">{{ u }} ＋</a>
+    {% endfor %}
+    <p class="muted small">這些沒有算進合計。點一下就能新增到食物表，之後自動重新計算。</p>
+  </div>
+  {% endif %}
+  <p class="muted small">數值為依常見份量的估算，同一種食物各家差異很大，適合看長期趨勢。</p>
+</div>
+{% elif est and est.has_food %}
+<div class="nutri"><p class="muted small">還認不出食物。可以寫成「鍋貼 20 顆、白飯 1 碗」這樣的格式。</p></div>
+{% endif %}

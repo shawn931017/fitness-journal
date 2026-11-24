@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}{{ d|mdw }}｜健身月記{% endblock %}
+{% block content %}
+<a class="back" href="javascript:history.back()">‹ 返回</a>
+<header class="page-head tight">
+  <p class="eyebrow">當天全部紀錄</p>
+  <h1>{{ d|mdw }}</h1>
+</header>
+<section class="card">
+  {% include "_day_detail.html" %}
+</section>
+<p class="center"><a class="btn" href="{{ url_for('life', date=ds) }}">補記或修正這天的簡記</a></p>
+{% endblock %}

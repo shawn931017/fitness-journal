@@ -1,0 +1,25 @@
+{# 吃的量和每日目標比較：cmp = goals.compare() 的結果 #}
+{% if cmp %}
+<div class="goal-bars">
+  <p class="goal-head"><strong>{{ cmp.mode_label }}目標</strong>
+    <small class="muted">{{ '今天還沒結束，先看進度' if cmp.in_progress else '這天的結果' }}{{ '・有查不到的食物，實際應更高' if cmp.partial }}</small></p>
+  {% for key, label, unit in [('kcal', '熱量', 'kcal'), ('protein', '蛋白質', 'g')] %}
+    {% set c = cmp[key] %}
+    <div class="gb gb-{{ c.state }}">
+      <div class="gb-top">
+        <span class="gb-label">{{ label }}</span>
+        {% if c.state == 'none' %}
+          <span class="gb-text muted">{% if key == 'kcal' %}<a href="{{ url_for('settings') }}#goal">到設定填身高、年齡</a>就能比較{% else %}有體重紀錄後才能比較{% endif %}</span>
+        {% else %}
+          <span class="gb-num">{{ c.value }}{{ '+' if cmp.partial }} <small>/ {{ c.rule }} {{ unit }}</small></span>
+        {% endif %}
+      </div>
+      {% if c.state != 'none' %}
+      <div class="gb-track"><span style="width: {{ c.pct }}%"></span></div>
+      <p class="gb-text">{% if c.state == 'ok' %}✓ {% endif %}{{ c.text }}</p>
+      {% if c.note %}<p class="gb-note">{{ c.note }}</p>{% endif %}
+      {% endif %}
+    </div>
+  {% endfor %}
+</div>
+{% endif %}

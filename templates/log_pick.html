@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}選擇動作｜健身月記{% endblock %}
+{% block content %}
+<header class="page-head">
+  <h1>選擇動作</h1>
+  <p class="muted">點進去會先看到同一台器材上次的每一組。</p>
+</header>
+
+{% if todays %}
+<section>
+  <h2 class="section-title">今天做過</h2>
+  <div class="list card flush">
+    {% for w in todays %}
+    <a class="list-item" href="{{ url_for('log_exercise', ex_id=w.exercise_id) }}">
+      <span class="li-main">{{ w.movement }}<small>{{ w.equipment }}</small></span>
+      <span class="pill">{{ w.sets|length }} 組</span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<nav class="chips sticky" aria-label="部位">
+  {% for bp in groups %}<a class="chip" href="#bp-{{ loop.index }}">{{ bp }}</a>{% endfor %}
+</nav>
+
+{% for bp, mvs in groups.items() %}
+<section id="bp-{{ loop.index }}" class="anchor">
+  <h2 class="section-title">{{ bp }}</h2>
+  <div class="list card flush">
+    {% for mv in mvs %}
+    <a class="list-item" href="{{ url_for('log_exercise', ex_id=mv.default_id) }}">
+      <span class="li-main">{{ mv.movement }}<small>{{ mv.variants|map(attribute='equipment')|join('・') }}</small></span>
+      <span class="li-side">{{ mv.last_date|ago if mv.last_date else '尚無紀錄' }}</span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endfor %}
+
+<p class="center"><a class="btn" href="{{ url_for('settings') }}#add-exercise">＋ 新增動作或器材</a></p>
+{% endblock %}

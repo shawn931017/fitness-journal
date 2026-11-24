@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ ex.movement }}｜健身月記{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('log_pick') }}">‹ 選擇動作</a>
+<header class="page-head tight">
+  <p class="eyebrow">{{ ex.body_part }}</p>
+  <h1>{{ ex.movement }}</h1>
+</header>
+
+<div class="seg" aria-label="器材">
+  {% for v in variants %}
+  <a class="seg-item {{ 'on' if v.id == ex.id }}" href="{{ url_for('log_exercise', ex_id=v.id) }}"
+     {% if v.id == ex.id %}aria-current="true"{% endif %}>{{ v.equipment }}</a>
+  {% endfor %}
+  <a class="seg-item add" href="{{ url_for('settings', movement=ex.movement, body_part=ex.body_part) }}#add-exercise"
+     title="新增器材">＋ 器材</a>
+</div>
+
+<section class="card prev">
+  <div class="card-head">
+    <h2>前次紀錄<small>{{ ex.equipment }}</small></h2>
+    {% if prev_date %}<span class="muted small">{{ prev_date|mdw }}・{{ prev_date|ago }}</span>{% endif %}
+  </div>
+  {% if prev_sets %}
+    <ol class="sets">
+      {% for s in prev_sets %}
+      <li class="{{ 'warm' if s.is_warmup }}">
+        <span class="set-label">{{ s.label }}</span>
+        <span class="set-val">{{ s.weight|wlabel(ex.per_hand) }} × {{ s.reps }} 下</span>
+        {% if s.is_demo %}<span class="tag">測試</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+  {% else %}
+    <p class="first-time"><strong>首次記錄</strong>這台器材還沒有紀錄，這次輸入的重量會成為下次的起點。</p>
+  {% endif %}
+</section>
+
+<section class="card today">
+  <div class="card-head">
+    <h2>今天</h2>
+    <a class="small" href="{{ url_for('review', exercise_id=ex.id) }}">看趨勢 ›</a>
+  </div>
+  <div id="today-sets">{% include "_today_sets.html" %}</div>
+</section>
+
+<form id="set-form" class="card set-form" method="post" action="{{ url_for('add_set', ex_id=ex.id) }}"
+      data-ex="{{ ex.id }}" autocomplete="off">
+  <div class="form-head">
+    <h2 id="next-label">{{ next_label }}</h2>
+    <label class="toggle"><input type="checkbox" name="is_warmup" value="1"><span>熱身組</span></label>
+  </div>
+
+  <div class="stepper">
+    <label class="stepper-label" for="weight">重量（kg{{ '，單手' if ex.per_hand }}）</label>
+    <div class="stepper-row">
+      <button type="button" class="step" data-target="weight" data-delta="-{{ ex.step|kg }}" aria-label="減 {{ ex.step|kg }} 公斤">−</button>
+      <input id="weight" name="weight" type="text" inputmode="decimal" value="{{ prefill.weight }}" required>
+      <button type="button" class="step" data-target="weight" data-delta="{{ ex.step|kg }}" aria-label="加 {{ ex.step|kg }} 公斤">＋</button>
+    </div>
+  </div>
+
+  <div class="stepper">
+    <label class="stepper-label" for="reps">次數（下）</label>
+    <div class="stepper-row">
+      <button type="button" class="step" data-target="reps" data-delta="-1" data-min="1" aria-label="少一下">−</button>
+      <input id="reps" name="reps" type="text" inputmode="numeric" pattern="[0-9]*" value="{{ prefill.reps }}" required>
+      <button type="button" class="step" data-target="reps" data-delta="1" aria-label="多一下">＋</button>
+    </div>
+  </div>
+
+  <input type="hidden" name="client_id" value="">
+  <div id="save-status" class="save-status" role="status" aria-live="polite"></div>
+  <button class="btn btn-primary btn-big btn-block" type="submit" id="save-btn">儲存這一組</button>
+  <p class="hint">存完數值會保留，下一組一樣就直接再按一次。</p>
+</form>
+{% endblock %}
